@@ -226,11 +226,32 @@ export const getMiningRewards = async () => {
   if (SKIP_AUTH) {
     return { 
       success: true, 
-      rewards: [
-        { date: new Date().toISOString(), amount: 100 },
-        { date: new Date(Date.now() - 86400000).toISOString(), amount: 200 },
-        { date: new Date(Date.now() - 172800000).toISOString(), amount: 150 }
-      ]
+      rewards: {
+        items: [
+          { 
+            id: 1, 
+            reward_time: new Date().toISOString(), 
+            amount: 100, 
+            mining_level: 5,
+            duration_hours: 2.5
+          },
+          { 
+            id: 2, 
+            reward_time: new Date(Date.now() - 86400000).toISOString(), 
+            amount: 200, 
+            mining_level: 4,
+            duration_hours: 3.0
+          },
+          { 
+            id: 3, 
+            reward_time: new Date(Date.now() - 172800000).toISOString(), 
+            amount: 150, 
+            mining_level: 3,
+            duration_hours: 1.5
+          }
+        ],
+        total: 3
+      }
     };
   }
 
