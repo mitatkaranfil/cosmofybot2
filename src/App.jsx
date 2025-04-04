@@ -29,8 +29,8 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Automatically bypass in browser-based test environments
-  const [bypassDev, setBypassDev] = useState(SKIP_AUTH || (isHeroku && !isTelegramWebApp));
+  // Sadece geliştirme modunda aktif et, Heroku'da her zaman gerçek auth kullan
+  const [bypassDev, setBypassDev] = useState(SKIP_AUTH || (isDevelopment && !isTelegramWebApp));
   
   useEffect(() => {
     const handleTelegramAuth = async () => {
