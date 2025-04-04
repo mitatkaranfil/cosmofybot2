@@ -1,6 +1,10 @@
 import axios from 'axios';
 
+// Get API URL from environment variables, fallback to default if not available
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+// Debug log to see what URL is being used
+console.log('API URL:', API_URL);
 
 // Create axios instance
 const apiClient = axios.create({
@@ -8,6 +12,8 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Increase timeout to handle potential network delays
+  timeout: 15000,
 });
 
 // Add a request interceptor to add the auth token
