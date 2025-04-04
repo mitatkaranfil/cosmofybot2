@@ -15,29 +15,34 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'Access-Control-Allow-Origin': '*',
   },
-  // Disable credentials for wildcard CORS
+  // Kesinlikle withCredentials false olmalı, yoksa * origin ile çalışmaz
   withCredentials: false,
-  timeout: 20000, // Increased timeout for better reliability
+  timeout: 30000, // Zaman aşımını artırıyoruz
 });
 
 // Better error handling for CORS and network issues
 apiClient.interceptors.response.use(
   (response) => response, 
   (error) => {
+    console.error('API Error:', error);
+    
     if (error.code === 'ERR_NETWORK') {
       console.error('Network error - possible CORS issue:', error);
-      console.log('Check if backend CORS is configured correctly with:', window.location.origin);
+      console.error('Origin:', window.location.origin);
+      console.error('Target API:', API_URL);
     } else if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error('Server responded with error:', error.response.status);
-      console.error('Response data:', error.response.data);
-      console.error('Response headers:', error.response.headers);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', error.response.data);
+      console.error('Error response headers:', error.response.headers);
     } else if (error.request) {
       // The request was made but no response was received
       console.error('No response received from server:', error.request);
     }
+    
     return Promise.reject(error);
   }
 );
