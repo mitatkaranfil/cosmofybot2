@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Get API URL from environment variables, fallback to default if not available
-const API_URL = import.meta.env.VITE_API_URL || 'https://cosmofybot1-18d79623b815.herokuapp.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://cosmofybot1-18d79623b615.herokuapp.com/api';
 // SKIP_AUTH'u false olarak zorluyoruz, bunu hiçbir şekilde etkinleştirmeyeceğiz
 const SKIP_AUTH = false;
 
@@ -14,11 +14,9 @@ const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Accept': 'application/json'
   },
-  // Kesinlikle withCredentials false olmalı, yoksa * origin ile çalışmaz
-  withCredentials: false,
+  withCredentials: true,
   timeout: 30000, // Zaman aşımını artırıyoruz
 });
 
