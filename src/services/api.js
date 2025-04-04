@@ -303,15 +303,22 @@ export const getEligibleAds = async () => {
 // Leaderboard
 export const getLeaderboard = async (timeframe = 'daily', limit = 20) => {
   if (SKIP_AUTH) {
+    const mockUsers = Array(limit).fill(0).map((_, index) => ({
+      id: 1000 + index,
+      username: `user${index}`,
+      first_name: `User ${index}`,
+      score: 1000 - (index * 50),
+      rank: index + 1
+    }));
+    
     return { 
       success: true, 
-      leaderboard: Array(limit).fill(0).map((_, index) => ({
-        id: 1000 + index,
-        username: `user${index}`,
-        first_name: `User ${index}`,
-        score: 1000 - (index * 50),
-        rank: index + 1
-      }))
+      leaderboard: {
+        data: mockUsers,
+        total: mockUsers.length,
+        page: 1,
+        limit
+      }
     };
   }
 
@@ -328,10 +335,11 @@ export const getUserRank = async (timeframe = 'daily') => {
   if (SKIP_AUTH) {
     return { 
       success: true, 
-      rank: {
+      userRank: {
         rank: 5,
         score: 750,
-        total_users: 100
+        total_users: 100,
+        timeframe
       }
     };
   }

@@ -23,20 +23,34 @@ const Leaderboard = () => {
         // Fetch leaderboard data
         const response = await getLeaderboard(timeframe);
         if (response.success) {
-          setLeaderboardData(response.leaderboard.data);
+          // Handle different response structures:
+          // { leaderboard: [...] } or { leaderboard: { data: [...] } }
+          if (Array.isArray(response.leaderboard)) {
+            setLeaderboardData(response.leaderboard);
+          } else if (response.leaderboard && Array.isArray(response.leaderboard.data)) {
+            setLeaderboardData(response.leaderboard.data);
+          } else if (response.leaderboard) {
+            // Just in case it's directly an object without data property
+            setLeaderboardData(response.leaderboard);
+          } else {
+            setLeaderboardData([]);
+          }
         } else {
           setError('Failed to fetch leaderboard data');
+          setLeaderboardData([]);
         }
         
         // Fetch user's rank
         const rankResponse = await getUserRank(timeframe);
         if (rankResponse.success) {
-          setUserRank(rankResponse);
+          // Handle both possible response structures
+          setUserRank(rankResponse.userRank ? rankResponse : rankResponse.userRank);
         }
         
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
         setError('An error occurred while fetching the leaderboard');
+        setLeaderboardData([]);
       } finally {
         setIsLoading(false);
       }
@@ -75,11 +89,11 @@ const Leaderboard = () => {
           {userRank && <UserRankCard userRank={userRank} timeframe={timeframe} />}
           
           <LeaderboardTable 
-            data={leaderboardData} 
+            data={leaderboardData || []} 
             timeframe={timeframe} 
           />
           
-          {leaderboardData.length === 0 && (
+          {(!leaderboardData || leaderboardData.length === 0) && (
             <div className="no-data-message">
               No data available for this timeframe
             </div>
