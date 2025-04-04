@@ -20,9 +20,14 @@ const App = () => {
         if (window.Telegram && window.Telegram.WebApp) {
           const webApp = window.Telegram.WebApp;
           
-          // Initialize Telegram WebApp
-          webApp.ready();
-          webApp.expand();
+          try {
+            // Initialize Telegram WebApp
+            webApp.ready();
+            webApp.expand();
+          } catch (webAppError) {
+            console.warn('Error initializing Telegram WebApp:', webAppError);
+            // Continue execution even if WebApp methods fail
+          }
           
           // Get user data from Telegram WebApp
           const initData = webApp.initData || '';
