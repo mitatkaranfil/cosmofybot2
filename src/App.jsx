@@ -7,6 +7,17 @@ import Profile from './views/Profile';
 import Leaderboard from './views/Leaderboard';
 import Loader from './components/ui/Loader';
 
+// Conditional WebApp import - don't try to import if not in a browser environment
+let WebAppSDK = null;
+if (typeof window !== 'undefined') {
+  try {
+    // Only try to import if we're in a browser
+    WebAppSDK = require('@twa-dev/sdk').WebApp;
+  } catch (error) {
+    console.warn('Could not import WebApp SDK:', error);
+  }
+}
+
 const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,11 +28,13 @@ const App = () => {
       try {
         setIsLoading(true);
         
+        // Check if we're in Telegram WebApp using window.Telegram
         if (window.Telegram && window.Telegram.WebApp) {
           const webApp = window.Telegram.WebApp;
           
           try {
-            // Initialize Telegram WebApp
+            // Use window.Telegram.WebApp API directly 
+            // instead of the imported WebApp from @twa-dev/sdk
             webApp.ready();
             webApp.expand();
           } catch (webAppError) {

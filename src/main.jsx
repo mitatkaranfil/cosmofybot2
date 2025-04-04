@@ -2,17 +2,20 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { WebApp } from '@twa-dev/sdk';
 
-// Check if we're running inside Telegram WebApp
-const isTelegramWebApp = Boolean(window.Telegram?.WebApp);
+// Check if we're running inside Telegram WebApp environment
+const isTelegramWebAppEnv = Boolean(window.Telegram?.WebApp);
 
-// Initialize Telegram WebApp if available
-if (isTelegramWebApp) {
-  WebApp.ready();
-  
-  // Set theme based on Telegram theme
-  document.documentElement.className = WebApp.colorScheme;
+// Initialize theme based on environment
+if (isTelegramWebAppEnv) {
+  try {
+    // Use the native Telegram WebApp directly from window object
+    window.Telegram.WebApp.ready();
+    document.documentElement.className = window.Telegram.WebApp.colorScheme || 'light';
+  } catch (error) {
+    console.warn('Telegram WebApp error:', error);
+    document.documentElement.className = 'light';
+  }
 } else {
   // Default theme for browser testing
   document.documentElement.className = 'light';
