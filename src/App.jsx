@@ -8,7 +8,7 @@ import Leaderboard from './views/Leaderboard';
 import Loader from './components/ui/Loader';
 
 // Environment variables for configuration
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://cosmofybot1-18d79623b815.herokuapp.com/api';
 const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === 'true';
 
 // Check if we're in development mode or running on Heroku
