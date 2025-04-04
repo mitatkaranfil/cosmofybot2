@@ -18,6 +18,18 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
+// Better error handling for CORS and network issues
+apiClient.interceptors.response.use(
+  (response) => response, 
+  (error) => {
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error - possible CORS issue:', error);
+      console.log('Check if backend CORS is configured correctly with:', window.location.origin);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Add a request interceptor to add the auth token
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
