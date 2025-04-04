@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Get API URL from environment variables, fallback to default if not available
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://cosmofybot1-18d79623b815.herokuapp.com/api';
 // SKIP_AUTH'u false olarak zorluyoruz, bunu hiçbir şekilde etkinleştirmeyeceğiz
 const SKIP_AUTH = false;
 
@@ -15,6 +15,8 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // CORS settings
+  withCredentials: false, // Set to false for the '*' origin policy
   // Increase timeout to handle potential network delays
   timeout: 15000,
 });
@@ -26,6 +28,15 @@ apiClient.interceptors.response.use(
     if (error.code === 'ERR_NETWORK') {
       console.error('Network error - possible CORS issue:', error);
       console.log('Check if backend CORS is configured correctly with:', window.location.origin);
+    } else if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Server responded with error:', error.response.status);
+      console.error('Response data:', error.response.data);
+      console.error('Response headers:', error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received from server:', error.request);
     }
     return Promise.reject(error);
   }
