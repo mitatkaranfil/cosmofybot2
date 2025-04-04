@@ -10,9 +10,9 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to backend
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'https://cosmofybot1-18d79623b815.herokuapp.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       }
     }
   },
