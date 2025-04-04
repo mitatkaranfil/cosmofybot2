@@ -7,17 +7,6 @@ import Profile from './views/Profile';
 import Leaderboard from './views/Leaderboard';
 import Loader from './components/ui/Loader';
 
-// Conditional WebApp import - don't try to import if not in a browser environment
-let WebAppSDK = null;
-if (typeof window !== 'undefined') {
-  try {
-    // Only try to import if we're in a browser
-    WebAppSDK = require('@twa-dev/sdk').WebApp;
-  } catch (error) {
-    console.warn('Could not import WebApp SDK:', error);
-  }
-}
-
 // Environment variables for configuration
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === 'true';
@@ -25,13 +14,15 @@ const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === 'true';
 // Check if we're in development mode or running on Heroku
 const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const isHeroku = window.location.hostname.includes('herokuapp.com');
+const isTelegramWebApp = Boolean(window.Telegram?.WebApp);
 
 // Debug info
 console.log('Environment config:', {
   API_URL,
   SKIP_AUTH,
   isDevelopment,
-  isHeroku
+  isHeroku,
+  isTelegramWebApp
 });
 
 const App = () => {
@@ -39,95 +30,111 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   // Automatically bypass in browser-based test environments
-  const [bypassDev, setBypassDev] = useState(SKIP_AUTH || isHeroku || isDevelopment);
+  const [bypassDev, setBypassDev] = useState(SKIP_AUTH || (isHeroku && !isTelegramWebApp));
   
   useEffect(() => {
     const handleTelegramAuth = async () => {
       try {
         setIsLoading(true);
         
-        // Check if we're in Telegram WebApp using window.Telegram
-        if (window.Telegram && window.Telegram.WebApp) {
+        // Check if we're in Telegram WebApp
+        if (isTelegramWebApp) {
           const webApp = window.Telegram.WebApp;
           
           try {
-            // Use window.Telegram.WebApp API directly 
-            // instead of the imported WebApp from @twa-dev/sdk
-            webApp.ready();
-            webApp.expand();
-          } catch (webAppError) {
-            console.warn('Error initializing Telegram WebApp:', webAppError);
-            // Continue execution even if WebApp methods fail
-          }
-          
-          // Get user data from Telegram WebApp
-          const initData = webApp.initData || '';
-          const userData = {
-            initData,
-            user: webApp.initDataUnsafe?.user || {}
-          };
-          
-          // Authenticate with the backend
-          const authResponse = await authenticateUser(userData);
-          
-          if (authResponse.success) {
-            setUser(authResponse.user);
-            setError(null);
-          } else {
-            setError(authResponse.message || 'Authentication failed');
-          }
-        } else {
-          // If not in Telegram WebApp, use local development mode
-          console.warn('Telegram WebApp not detected. Using development mode.');
-          
-          if (isDevelopment || bypassDev) {
-            // Skip backend authentication in development/testing mode
-            console.log('Development mode: Using mock user data');
+            // Get Telegram WebApp data
+            const initData = webApp.initData;
             
-            // Set mock user directly without backend authentication
-            setUser({
-              id: 12345,
-              first_name: 'Dev',
-              last_name: 'User',
-              username: 'devuser',
-              language_code: 'en',
-              balance: 1000,
-              level: 5,
-              mining_rate: 10,
-              is_mining: false
-            });
-            setError(null);
-          } else {
-            // For production environment, try to authenticate but show bypass option if it fails
-            const mockUser = {
-              id: 12345,
-              first_name: 'Test',
-              last_name: 'User',
-              username: 'testuser',
-              language_code: 'en'
-            };
+            // Make sure the WebApp is ready
+            if (!webApp.isExpanded) {
+              webApp.expand();
+            }
             
-            try {
-              const authResponse = await authenticateUser({ 
-                initData: 'development', 
-                user: mockUser 
-              });
+            // Check if we have valid init data
+            if (initData && webApp.initDataUnsafe?.user) {
+              const userData = {
+                initData,
+                user: webApp.initDataUnsafe.user
+              };
+              
+              console.log('Telegram user data:', userData);
+              
+              // Authenticate with the backend
+              const authResponse = await authenticateUser(userData);
               
               if (authResponse.success) {
                 setUser(authResponse.user);
                 setError(null);
+                
+                // Notify Telegram that the app is ready
+                webApp.ready();
               } else {
-                setError('This app is designed to run inside Telegram. Please open it from Telegram.');
+                setError(authResponse.message || 'Authentication failed');
+                console.error('Backend authentication failed:', authResponse.message);
+                
+                if (bypassDev) {
+                  throw new Error('Backend authentication failed, falling back to dev mode');
+                }
               }
-            } catch (err) {
-              console.error('Auth error:', err);
-              setError('This app is designed to run inside Telegram. Please open it from Telegram.');
+            } else {
+              console.warn('Telegram WebApp initData is empty or invalid');
+              if (bypassDev) {
+                throw new Error('Telegram authentication failed, falling back to dev mode');
+              } else {
+                setError('Invalid Telegram data. Please try opening the app again from Telegram.');
+              }
+            }
+          } catch (webAppError) {
+            console.warn('Error getting Telegram user data:', webAppError);
+            if (bypassDev) {
+              throw new Error('Telegram authentication failed, falling back to dev mode');
+            } else {
+              setError('Error processing Telegram data. Please try again.');
             }
           }
+        } else if (isDevelopment || bypassDev) {
+          // If not in Telegram WebApp but in development mode, use mock data
+          console.warn('Telegram WebApp not detected. Using development mode.');
+          
+          // Set mock user directly without backend authentication in dev mode
+          setUser({
+            id: 12345,
+            telegramId: "12345678",
+            firstName: 'Dev',
+            lastName: 'User',
+            username: 'devuser',
+            languageCode: 'en',
+            walletBalance: 1000,
+            miningLevel: 5,
+            miningRate: 10,
+            isActive: false
+          });
+          setError(null);
+        } else {
+          // For production environment outside Telegram
+          setError('This app is designed to run inside Telegram. Please open it from Telegram.');
         }
       } catch (err) {
         console.error('Authentication error:', err);
-        setError('Failed to authenticate. Please try again.');
+        // If there's an error and we have bypass enabled, use mock data
+        if (bypassDev) {
+          console.log('Error occurred but bypass is enabled. Using mock data.');
+          setUser({
+            id: 12345,
+            telegramId: "12345678",
+            firstName: 'Dev',
+            lastName: 'User',
+            username: 'devuser',
+            languageCode: 'en',
+            walletBalance: 1000,
+            miningLevel: 5,
+            miningRate: 10,
+            isActive: false
+          });
+          setError(null);
+        } else {
+          setError('Failed to authenticate. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -155,7 +162,7 @@ const App = () => {
               Retry
             </button>
             
-            {!isDevelopment && !window.Telegram?.WebApp && (
+            {!isDevelopment && !isTelegramWebApp && (
               <button
                 className="bg-gray-700 text-white px-6 py-2 rounded-lg font-medium mt-2"
                 onClick={() => setBypassDev(true)}
