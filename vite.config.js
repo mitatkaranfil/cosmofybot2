@@ -16,6 +16,14 @@ export default defineConfig({
       }
     }
   },
+  preview: {
+    port: process.env.PORT || 5173,
+    host: '0.0.0.0',
+    allowedHosts: [
+      'cosmofy-frontend-00d9ca88cc7d.herokuapp.com',
+      '*.herokuapp.com'
+    ]
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
