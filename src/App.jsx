@@ -42,46 +42,103 @@ const App = () => {
           const webApp = window.Telegram.WebApp;
           
           try {
-            // Get Telegram WebApp data
-            const initData = webApp.initData;
-            
-            // Make sure the WebApp is ready
+            // Expand the webapp regardless of authentication status
             if (!webApp.isExpanded) {
+              console.log('Expanding WebApp');
               webApp.expand();
             }
             
-            // Check if we have valid init data
+            // Log Telegram environment details for debugging
+            console.log('Telegram WebApp details:', { 
+              version: webApp.version,
+              platform: webApp.platform,
+              colorScheme: webApp.colorScheme,
+              themeParams: webApp.themeParams,
+              isExpanded: webApp.isExpanded,
+              viewportHeight: webApp.viewportHeight,
+              viewportStableHeight: webApp.viewportStableHeight,
+            });
+            
+            // Get Telegram WebApp data
+            const initData = webApp.initData;
+            console.log('Telegram initData length:', initData?.length || 0);
+            console.log('Telegram initData first 100 chars:', initData?.substring(0, 100) || 'empty');
+            
+            // Check if user data is available
+            if (webApp.initDataUnsafe) {
+              console.log('Telegram initDataUnsafe available:', !!webApp.initDataUnsafe);
+              console.log('Telegram user available:', !!webApp.initDataUnsafe.user);
+              
+              if (webApp.initDataUnsafe.user) {
+                console.log('Telegram user ID:', webApp.initDataUnsafe.user.id);
+              }
+            } else {
+              console.warn('Telegram initDataUnsafe is not available');
+            }
+            
+            // Proceed with authentication if we have user data
+            let userData = null;
+            
+            // In production, require proper initData and user data
+            // In development or with bypass, be more permissive
             if (initData && webApp.initDataUnsafe?.user) {
-              const userData = {
+              userData = {
                 initData,
                 user: webApp.initDataUnsafe.user
               };
               
-              console.log('Telegram user data:', userData);
+              console.log('Using real Telegram user data for authentication');
+            } else if (bypassDev) {
+              // Create mock data for development/testing
+              userData = {
+                initData: 'mock_init_data_for_testing',
+                user: {
+                  id: 12345678,
+                  first_name: 'Dev',
+                  last_name: 'User',
+                  username: 'devuser',
+                  language_code: 'en'
+                }
+              };
               
+              console.log('Using mock data for authentication in dev/bypass mode');
+            } else {
+              console.error('Telegram WebApp initData is invalid and bypass is not enabled');
+              setError('Invalid Telegram data. Please try opening the app again from Telegram.');
+              setIsLoading(false);
+              return;
+            }
+            
+            try {
               // Authenticate with the backend
+              console.log('Sending authentication request to backend');
               const authResponse = await authenticateUser(userData);
               
               if (authResponse.success) {
+                console.log('Authentication successful');
                 setUser(authResponse.user);
                 setError(null);
                 
                 // Notify Telegram that the app is ready
                 webApp.ready();
               } else {
-                setError(authResponse.message || 'Authentication failed');
                 console.error('Backend authentication failed:', authResponse.message);
                 
                 if (bypassDev) {
+                  console.log('Falling back to dev mode due to auth failure');
                   throw new Error('Backend authentication failed, falling back to dev mode');
+                } else {
+                  setError(authResponse.message || 'Authentication failed');
                 }
               }
-            } else {
-              console.warn('Telegram WebApp initData is empty or invalid');
+            } catch (authError) {
+              console.error('Authentication request error:', authError);
+              
               if (bypassDev) {
-                throw new Error('Telegram authentication failed, falling back to dev mode');
+                console.log('Falling back to dev mode due to auth request error');
+                throw new Error('Authentication request failed, falling back to dev mode');
               } else {
-                setError('Invalid Telegram data. Please try opening the app again from Telegram.');
+                setError('Error communicating with authentication server. Please try again.');
               }
             }
           } catch (webAppError) {
