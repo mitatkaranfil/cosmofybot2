@@ -14,11 +14,11 @@ const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  // CORS settings
-  withCredentials: false, // Set to false for the '*' origin policy
-  // Increase timeout to handle potential network delays
-  timeout: 15000,
+  // Disable credentials for wildcard CORS
+  withCredentials: false,
+  timeout: 20000, // Increased timeout for better reliability
 });
 
 // Better error handling for CORS and network issues
