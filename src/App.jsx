@@ -43,6 +43,8 @@ const App = () => {
     const authenticateWithServer = async () => {
       try {
         setIsLoading(true);
+        console.log('[AUTH] Starting authentication process');
+        
         // Rastgele kullanıcı ID'si oluştur - her kullanıcı farklı olsun
         const randomId = Math.floor(Math.random() * 1000000) + 1000000;
         
@@ -68,37 +70,84 @@ const App = () => {
               webApp.expand();
             }
             
-            console.log('Real Telegram WebApp detected, getting data');
+            console.log('[AUTH] Telegram WebApp detected');
+            console.log('[AUTH] Telegram WebApp version:', webApp.version);
+            console.log('[AUTH] Platform:', webApp.platform);
+            console.log('[AUTH] Color scheme:', webApp.colorScheme);
             
-            // Mevcut veriler ile yeni veri oluştur, Telegram kullanıcı verilerini ekle
-            if (webApp.initDataUnsafe?.user) {
-              console.log('Got real user data:', webApp.initDataUnsafe.user);
-              telegramData = {
-                initData: webApp.initData || 'telegram_web_app_' + randomId,
-                user: webApp.initDataUnsafe.user || telegramData.user
-              };
+            // InitData'yı kontrol et
+            if (webApp.initData) {
+              console.log('[AUTH] InitData length:', webApp.initData.length);
+              console.log('[AUTH] InitData first 50 chars:', webApp.initData.substring(0, 50));
             } else {
-              console.log('No real user data available, using fallback');
+              console.warn('[AUTH] No initData available in WebApp');
+            }
+            
+            // User verisini kontrol et
+            if (webApp.initDataUnsafe) {
+              console.log('[AUTH] initDataUnsafe available');
+              
+              if (webApp.initDataUnsafe.user) {
+                console.log('[AUTH] User data found in initDataUnsafe');
+                console.log('[AUTH] User ID:', webApp.initDataUnsafe.user.id);
+                console.log('[AUTH] User first_name:', webApp.initDataUnsafe.user.first_name);
+                
+                // Gerçek kullanıcı verisini kullan
+                telegramData = {
+                  initData: webApp.initData || 'backup_init_data_' + randomId,
+                  user: webApp.initDataUnsafe.user
+                };
+              } else {
+                console.warn('[AUTH] No user object in initDataUnsafe');
+              }
+            } else {
+              console.warn('[AUTH] No initDataUnsafe object in WebApp');
+            }
+            
+            // WebApp ready bildir
+            try {
+              webApp.ready();
+              console.log('[AUTH] WebApp.ready() called successfully');
+            } catch (readyError) {
+              console.warn('[AUTH] Error calling WebApp.ready():', readyError);
             }
           } catch (telegramError) {
-            console.error('Error getting Telegram WebApp data:', telegramError);
+            console.error('[AUTH] Error accessing Telegram WebApp:', telegramError);
           }
+        } else if (isTelegramWebApp) {
+          console.warn('[AUTH] window.Telegram exists but WebApp is undefined');
+        } else {
+          console.log('[AUTH] Not in Telegram WebApp environment');
         }
         
-        console.log('Authenticating with data:', telegramData);
+        // API URL'i kontrol et
+        console.log('[AUTH] Using API URL:', API_URL);
         
         // Kimlik doğrulama
+        console.log('[AUTH] Sending auth request with data:', telegramData);
         const authResponse = await authenticateUser(telegramData);
         
+        console.log('[AUTH] Auth response:', authResponse);
+        
         if (authResponse.success) {
-          console.log('Authentication successful:', authResponse.user);
+          console.log('[AUTH] Authentication successful');
           setUser(authResponse.user);
           setError(null);
+          
+          // Telegram WebApp'e hazır sinyali ver
+          if (isTelegramWebApp && window.Telegram?.WebApp) {
+            try {
+              window.Telegram.WebApp.ready();
+            } catch (e) {
+              console.warn('[AUTH] Error calling WebApp.ready() after auth:', e);
+            }
+          }
         } else {
-          console.error('Authentication failed:', authResponse);
+          console.error('[AUTH] Authentication failed:', authResponse.message);
           
           // Yedek plan: Yerel kullanıcı verisi kullan
           if (isDevelopment || bypassDev) {
+            console.log('[AUTH] Using fallback user in dev mode');
             setUser({
               id: randomId,
               telegramId: randomId.toString(),
@@ -114,10 +163,11 @@ const App = () => {
           }
         }
       } catch (error) {
-        console.error('Authentication process error:', error);
+        console.error('[AUTH] Fatal error during authentication:', error);
         
         if (isDevelopment || bypassDev) {
           // Geliştirme modunda göstermelik kullanıcı
+          console.log('[AUTH] Using mock user in dev mode after error');
           setUser({
             id: Date.now(),
             telegramId: Date.now().toString(),
@@ -129,7 +179,7 @@ const App = () => {
           });
           setError(null);
         } else {
-          setError('An error occurred during authentication: ' + error.message);
+          setError('Authentication error: ' + (error.message || 'Unknown error'));
         }
       } finally {
         setIsLoading(false);
@@ -137,7 +187,7 @@ const App = () => {
     };
     
     authenticateWithServer();
-  }, [isDevelopment, bypassDev, isTelegramWebApp]);
+  }, [isDevelopment, bypassDev, isTelegramWebApp, API_URL]);
   
   if (isLoading) {
     return <Loader message="Initializing application..." fullScreen />;
