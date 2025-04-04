@@ -18,16 +18,28 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Environment variables for configuration
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === 'true';
+
 // Check if we're in development mode or running on Heroku
 const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const isHeroku = window.location.hostname.includes('herokuapp.com');
+
+// Debug info
+console.log('Environment config:', {
+  API_URL,
+  SKIP_AUTH,
+  isDevelopment,
+  isHeroku
+});
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   // Automatically bypass in browser-based test environments
-  const [bypassDev, setBypassDev] = useState(isHeroku && !window.Telegram?.WebApp);
+  const [bypassDev, setBypassDev] = useState(SKIP_AUTH || isHeroku || isDevelopment);
   
   useEffect(() => {
     const handleTelegramAuth = async () => {
