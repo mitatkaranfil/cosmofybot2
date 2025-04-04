@@ -18,10 +18,14 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Check if we're in development mode
+const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
 const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [bypassDev, setBypassDev] = useState(false);
   
   useEffect(() => {
     const handleTelegramAuth = async () => {
@@ -60,28 +64,51 @@ const App = () => {
           }
         } else {
           // If not in Telegram WebApp, use local development mode
-          // For testing purposes only
           console.warn('Telegram WebApp not detected. Using development mode.');
           
-          // Mock user data for development
-          const mockUser = {
-            id: 12345,
-            first_name: 'Test',
-            last_name: 'User',
-            username: 'testuser',
-            language_code: 'en'
-          };
-          
-          const authResponse = await authenticateUser({ 
-            initData: 'development', 
-            user: mockUser 
-          });
-          
-          if (authResponse.success) {
-            setUser(authResponse.user);
+          if (isDevelopment || bypassDev) {
+            // Skip backend authentication in development/testing mode
+            console.log('Development mode: Using mock user data');
+            
+            // Set mock user directly without backend authentication
+            setUser({
+              id: 12345,
+              first_name: 'Dev',
+              last_name: 'User',
+              username: 'devuser',
+              language_code: 'en',
+              balance: 1000,
+              level: 5,
+              mining_rate: 10,
+              is_mining: false
+            });
             setError(null);
           } else {
-            setError(authResponse.message || 'Authentication failed');
+            // For production environment, try to authenticate but show bypass option if it fails
+            const mockUser = {
+              id: 12345,
+              first_name: 'Test',
+              last_name: 'User',
+              username: 'testuser',
+              language_code: 'en'
+            };
+            
+            try {
+              const authResponse = await authenticateUser({ 
+                initData: 'development', 
+                user: mockUser 
+              });
+              
+              if (authResponse.success) {
+                setUser(authResponse.user);
+                setError(null);
+              } else {
+                setError('This app is designed to run inside Telegram. Please open it from Telegram.');
+              }
+            } catch (err) {
+              console.error('Auth error:', err);
+              setError('This app is designed to run inside Telegram. Please open it from Telegram.');
+            }
           }
         }
       } catch (err) {
@@ -93,7 +120,7 @@ const App = () => {
     };
     
     handleTelegramAuth();
-  }, []);
+  }, [bypassDev]);
   
   if (isLoading) {
     return <Loader message="Initializing application..." fullScreen />;
@@ -105,12 +132,24 @@ const App = () => {
         <div className="bg-card-bg rounded-xl p-6 w-full max-w-md text-center">
           <h2 className="text-xl font-bold text-white mb-4">Authentication Error</h2>
           <p className="text-gray-300 mb-6">{error}</p>
-          <button 
-            className="bg-primary text-white px-6 py-2 rounded-lg font-medium"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
+          
+          <div className="flex flex-col space-y-3">
+            <button 
+              className="bg-primary text-white px-6 py-2 rounded-lg font-medium"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+            
+            {!isDevelopment && !window.Telegram?.WebApp && (
+              <button
+                className="bg-gray-700 text-white px-6 py-2 rounded-lg font-medium mt-2"
+                onClick={() => setBypassDev(true)}
+              >
+                Use Demo Mode
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
