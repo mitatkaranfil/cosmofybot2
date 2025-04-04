@@ -25,24 +25,10 @@ console.log('Environment config:', {
   isTelegramWebApp
 });
 
-// Telegram WebApp üzerinden initData alamıyorsak manuel olarak bir Telegram kullanıcısı gönderelim
-const manualTelegramUser = {
-  initData: 'manual_init_data_for_telegram',
-  user: {
-    id: Math.floor(Math.random() * 100000) + 1000000, // Rastgele kullanıcı ID'si
-    first_name: 'Telegram',
-    last_name: 'User',
-    username: 'telegram_user',
-    language_code: 'tr'
-  }
-};
-
 const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Sadece geliştirme modunda aktif et, Heroku'da her zaman gerçek auth kullan
-  // SKIP_AUTH değişkenini tamamen görmezden geliyoruz - prodüksiyonda gerçek kimlik doğrulama kullan
   const [bypassDev, setBypassDev] = useState(false);
   
   console.log('Auth modes:', {
@@ -53,62 +39,105 @@ const App = () => {
     SKIP_AUTH
   });
 
-  // Manuel auth için fonksiyon
-  const handleManualAuth = async () => {
-    try {
-      setIsLoading(true);
-      // Manuel kullanıcı verisini kullan
-      console.log('Using manual Telegram user data');
-      const authResponse = await authenticateUser(manualTelegramUser);
-      
-      if (authResponse.success) {
-        console.log('Manual Telegram authentication successful');
-        setUser(authResponse.user);
-        setError(null);
-      } else {
-        console.error('Manual Telegram authentication failed:', authResponse.message);
-        setError('Telegram authentication failed. Try refreshing the page.');
-      }
-    } catch (error) {
-      console.error('Manual Telegram authentication error:', error);
-      setError('Error during authentication. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
   useEffect(() => {
-    // Telegram WebApp entegrasyonu için daha agresif bir yaklaşım
-    if (isTelegramWebApp) {
-      console.log('Telegram WebApp detected, using manual auth');
-      handleManualAuth();
-      return;
-    } else if (isDevelopment || bypassDev) {
-      console.log('Development mode or bypass mode, using mock data');
-      // Geliştirme modunda mock kullanıcı verileri
-      setUser({
-        id: 12345,
-        telegramId: "12345678",
-        firstName: 'Dev',
-        lastName: 'User',
-        username: 'devuser',
-        languageCode: 'en',
-        walletBalance: 1000,
-        miningLevel: 5,
-        miningRate: 10,
-        isActive: false
-      });
-      setError(null);
-      setIsLoading(false);
-      return;
-    } else {
-      console.log('Production mode without Telegram WebApp, showing error');
-      // Üretim modunda Telegram dışında hata göster
-      setError('This app is designed to run inside Telegram. Please open it from Telegram.');
-      setIsLoading(false);
-      return;
-    }
-  }, [isTelegramWebApp, isDevelopment, bypassDev]);
+    const authenticateWithServer = async () => {
+      try {
+        setIsLoading(true);
+        // Rastgele kullanıcı ID'si oluştur - her kullanıcı farklı olsun
+        const randomId = Math.floor(Math.random() * 1000000) + 1000000;
+        
+        // Telegram API verileri
+        let telegramData = {
+          initData: 'manual_telegram_data_' + randomId,
+          user: {
+            id: randomId,
+            first_name: 'Telegram',
+            last_name: 'User',
+            username: 'telegram_user_' + randomId,
+            language_code: 'tr'
+          }
+        };
+        
+        // Gerçek Telegram WebApp ortamındaysak, gerçek verileri almaya çalış
+        if (isTelegramWebApp && window.Telegram?.WebApp) {
+          try {
+            const webApp = window.Telegram.WebApp;
+            
+            // WebApp'i genişlet
+            if (!webApp.isExpanded) {
+              webApp.expand();
+            }
+            
+            console.log('Real Telegram WebApp detected, getting data');
+            
+            // Mevcut veriler ile yeni veri oluştur, Telegram kullanıcı verilerini ekle
+            if (webApp.initDataUnsafe?.user) {
+              console.log('Got real user data:', webApp.initDataUnsafe.user);
+              telegramData = {
+                initData: webApp.initData || 'telegram_web_app_' + randomId,
+                user: webApp.initDataUnsafe.user || telegramData.user
+              };
+            } else {
+              console.log('No real user data available, using fallback');
+            }
+          } catch (telegramError) {
+            console.error('Error getting Telegram WebApp data:', telegramError);
+          }
+        }
+        
+        console.log('Authenticating with data:', telegramData);
+        
+        // Kimlik doğrulama
+        const authResponse = await authenticateUser(telegramData);
+        
+        if (authResponse.success) {
+          console.log('Authentication successful:', authResponse.user);
+          setUser(authResponse.user);
+          setError(null);
+        } else {
+          console.error('Authentication failed:', authResponse);
+          
+          // Yedek plan: Yerel kullanıcı verisi kullan
+          if (isDevelopment || bypassDev) {
+            setUser({
+              id: randomId,
+              telegramId: randomId.toString(),
+              firstName: 'Telegram',
+              lastName: 'User',
+              username: 'telegram_user_' + randomId,
+              walletBalance: 500,
+              miningLevel: 1
+            });
+            setError(null);
+          } else {
+            setError('Authentication failed: ' + (authResponse.message || 'Unknown error'));
+          }
+        }
+      } catch (error) {
+        console.error('Authentication process error:', error);
+        
+        if (isDevelopment || bypassDev) {
+          // Geliştirme modunda göstermelik kullanıcı
+          setUser({
+            id: Date.now(),
+            telegramId: Date.now().toString(),
+            firstName: 'Dev',
+            lastName: 'User',
+            username: 'dev_user',
+            walletBalance: 1000,
+            miningLevel: 5
+          });
+          setError(null);
+        } else {
+          setError('An error occurred during authentication: ' + error.message);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    authenticateWithServer();
+  }, [isDevelopment, bypassDev, isTelegramWebApp]);
   
   if (isLoading) {
     return <Loader message="Initializing application..." fullScreen />;
