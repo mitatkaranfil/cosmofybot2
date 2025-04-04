@@ -1,0 +1,33 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3001, // Frontend server port
+    open: true, // Auto-open browser
+    proxy: {
+      // Proxy API requests to backend
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console logs in production
+      },
+    },
+  },
+  // Define environment variables
+  define: {
+    'import.meta.env.TELEGRAM_PRODUCTION': JSON.stringify(process.env.TELEGRAM_PRODUCTION || false),
+  }
+}); 
