@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // Get API URL from environment variables, fallback to default if not available
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === 'true';
+// SKIP_AUTH'u false olarak zorluyoruz, bunu hiçbir şekilde etkinleştirmeyeceğiz
+const SKIP_AUTH = false;
 
 // Debug log to see what URL is being used
 console.log('API URL:', API_URL);
