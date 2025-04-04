@@ -17,33 +17,10 @@ const apiClient = axios.create({
     'Accept': 'application/json'
   },
   withCredentials: true,
-  timeout: 30000, // Zaman aşımını artırıyoruz
+  timeout: 30000,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN'
 });
-
-// Better error handling for CORS and network issues
-apiClient.interceptors.response.use(
-  (response) => response, 
-  (error) => {
-    console.error('API Error:', error);
-    
-    if (error.code === 'ERR_NETWORK') {
-      console.error('Network error - possible CORS issue:', error);
-      console.error('Origin:', window.location.origin);
-      console.error('Target API:', API_URL);
-    } else if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Error response status:', error.response.status);
-      console.error('Error response data:', error.response.data);
-      console.error('Error response headers:', error.response.headers);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received from server:', error.request);
-    }
-    
-    return Promise.reject(error);
-  }
-);
 
 // Add a request interceptor to add the auth token
 apiClient.interceptors.request.use((config) => {
@@ -53,6 +30,26 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Add a response interceptor for better error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error);
+    
+    if (error.response) {
+      console.error('Response Status:', error.response.status);
+      console.error('Response Data:', error.response.data);
+      console.error('Response Headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    } else {
+      console.error('Error:', error.message);
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 // Mock data for development and testing
 const mockMiningStatus = {
