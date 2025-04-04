@@ -59,9 +59,12 @@ const mockMiningStatus = {
 
 // Authentication
 export const authenticateUser = async (telegramData) => {
+  // Debug için telegramData içeriğini logla
+  console.log('Auth request payload:', JSON.stringify(telegramData, null, 2));
+  
   // If SKIP_AUTH is true, return a mock successful auth
   if (SKIP_AUTH) {
-    console.log('Bypassing authentication with mock data');
+    console.log('Bypassing authentication with mock data (SKIP_AUTH=true)');
     return {
       success: true,
       user: {
@@ -82,14 +85,33 @@ export const authenticateUser = async (telegramData) => {
   }
 
   try {
+    console.log('Sending auth request to:', `${API_URL}/auth/login`);
     const response = await apiClient.post('/auth/login', telegramData);
+    console.log('Auth response:', response.data);
+    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
     }
     return response.data;
   } catch (error) {
     console.error('Authentication error:', error);
-    return { success: false, message: error.response?.data?.message || 'Authentication failed' };
+    
+    // Daha detaylı hata log'ları
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Error request:', error.request);
+    } else {
+      console.error('Error message:', error.message);
+    }
+    
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'Authentication failed',
+      error: error.message
+    };
   }
 };
 
